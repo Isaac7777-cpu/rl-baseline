@@ -213,7 +213,13 @@ class OuterLoopActionAgent(nn.Module):
         values = self.critic(hidden_states)
         return values
 
-    def get_action(self, hidden_states, action=None):
+    def get_action(self, hidden_states: torch.Tensor, action=None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Returns:
+            - The sampled action if not provided
+            - The log probability of taking the action given the hidden state dist
+            - The entory of taking the action given the hidden state distribution
+        """
         action_mean, action_std = self.actor(hidden_states)
         prob_distribution = Normal(action_mean, action_std)
         if action is None:
@@ -221,7 +227,7 @@ class OuterLoopActionAgent(nn.Module):
 
         return action, prob_distribution.log_prob(action).sum(dim=-1), prob_distribution.entropy().sum(dim=-1)
 
-    def get_deterministic_action(self, hiddent_states):
+    def get_deterministic_action(self, hiddent_states) -> torch.Tensor:
         mean, std = self.actor(hiddent_states)
         return mean
 

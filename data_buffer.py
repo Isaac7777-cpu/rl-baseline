@@ -43,15 +43,16 @@ class LifeTimeBuffer:
 
         self.num_lifetime_steps = num_lifetime_steps
         self.episodes_returns=[]   # A list of returns in each episode in the lifetime
-        self.opisodes_sucesses=[]  # A list of flags whether each episode in the lifetime succeded in completing the task
+        self.episodes_sucesses=[]  # A list of flags whether each episode in the lifetime succeded in completing the task
 
         self.env_name = env_name
 
 
-    def store_step_data(self, global_step, obs, prev_act, prev_reward, prev_logo, prev_done):
+    def store_step_data(self, global_step, obs, prev_act, prev_reward, prev_logp, prev_done):
         self.observations[global_step] = obs.to(self.device)
         self.prev_actions[global_step] = prev_act.to(self.device)
-        self.prev_logprob_actions[global_step] = prev_done.to(self.device)
+        self.prev_logprob_actions[global_step] = prev_logp.to(self.device)
+        self.dones[global_step] = prev_done.to(self.device)
         self.prev_rewards[global_step] = prev_reward.to(self.device)
 
     def store_meta_value(self, global_step, meta_value):
