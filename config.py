@@ -11,8 +11,8 @@ class TrainingConfig:
         self.seeding = False
         self.seed = 1
         # self.ol_device = 'mps'
-        self.ol_device: Literal['cuda', 'mps', 'cpu'] = 'cuda'
-        self.il_device: Literal['cuda', 'mps', 'cpu'] = 'cpu'
+        self.ol_device: Literal['cuda', 'mps', 'cpu', 'auto'] = 'auto'
+        self.il_device: Literal['cuda', 'mps', 'cpu', 'auto'] = 'cpu'
 
         self.num_outer_loop_updates = 5000
         self.num_inner_loops_per_update = 30
@@ -42,6 +42,8 @@ class TrainingConfig:
             "max_grad_norm": 0.5,
             "target_KL": 0.1
         }
+
+        self.wandb_logging = False
 
 
 def get_config():
