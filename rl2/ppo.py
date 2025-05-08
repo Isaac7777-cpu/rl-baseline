@@ -296,7 +296,15 @@ class OuterLoopTBPTTPPO():
         # Log metrics
         if self.logging == True:
             lr = self.optimizer.param_groups[0]["lr"]
-            # wandb.log
+            wandb.log({
+                'learning_rate': lr,
+                'policy gradient loss': np.array(self.policy_gradient_losses).mean(),
+                'entropy' : np.array(self.entropies).mean(),
+                'aprox KL' : np.array(self.aprox_KL).mean(),
+                'fraction of clippings': np.array(self.fractions_of_clippings).mean()
+            }, commit=False)
+
+        self.update_number += 1
 
 
     def _one_TBPTT_through_sequence(self, buffer: OLBuffer, meta_agent: OuterLoopActionAgent, displacement):
