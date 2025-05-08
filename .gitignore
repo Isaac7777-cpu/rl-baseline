@@ -1,1 +1,78 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+*.egg-info/
+*.eggs/
+*.log
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+
+# === Environment & Tools ===
+.env
+.venv/
+env/
+venv/
+.Python
+*.swp
+*.bak
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# === Data / Outputs / Checkpoints ===
+wandb/
+logs/
+*.ckpt
+*.pth
+*.pt
+*.h5
+*.zip
+*.npy
+*.npz
+
+# === Cache and Temp Files ===
+.cache/
+*.tmp
+*.temp
+*.log
+nohup.out
+
+# === Ray ===
+ray_results/
+result.json
+*.ray_tmp/
+
+# === VS Code ===
+.vscode/
+.settings/
+
+# === PyCharm ===
 .idea/
+
+
+# === MacOS ===
+.DS_Store
+
+# === Submodule-safe exclusions ===
+!*.gitmodules
+!*/.gitkeep
+
+# === Project-specific ===
+__init__.pyc
+*.old.py
+*_backup.py
+debug/
+
+# === Optional: ignore model symlinks or experiment results ===
+models/
+results/
+checkpoints/
+experiments/
+

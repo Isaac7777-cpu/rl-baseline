@@ -5,11 +5,12 @@ import torch.optim as optim
 
 import random
 
-from agentppo import OuterLoopActionAgent, OuterLoopTBPTTPPO
-from data_buffer import OLBuffer
-from utils import Logger, StatisticsTracker
-from config import get_config
-from inner_loop import run_inner_loop
+from baseline.agentppo import OuterLoopActionAgent, OuterLoopTBPTTPPO
+from baseline.data_buffer import OLBuffer
+from baseline.utils import Logger, StatisticsTracker
+from baseline.config import get_config
+from baseline.inner_loop import run_inner_loop
+from Environments import Environment
 
 import wandb
 import ray
@@ -19,6 +20,17 @@ if ray.is_initialized:
 ray.init()
 
 load_weights = False
-initiial_weights_path = 'path_to_model/model_name.pth'
+initiial_weights_path = './models/model_name.pth'
+
+config = get_config()
+env_name = config.env_name
+
+exp_name = env_name
+# task_sampler = 
+exp_name = "rl2"
+example_env = Environment(domain=env_name)
+
+
+print(example_env)
 
 

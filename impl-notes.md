@@ -72,3 +72,12 @@ Therefore, this would yield the shape of:
 ```
 rnn_input_size1 = obs_size + actions_size + 1 + 1
 ```
+
+## Execution Notice
+
+In order to run the training script, i.e. `outer_loop.py`, it is required to run in the root director with 
+```bash
+python -m rl-baseline.outer_loop
+```
+
+

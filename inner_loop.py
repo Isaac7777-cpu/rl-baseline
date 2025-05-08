@@ -1,8 +1,8 @@
 import random
 import numpy as np
 import torch
-from data_buffer import LifeTimeBuffer
-from agentppo import OuterLoopActionAgent
+from baseline.data_buffer import LifeTimeBuffer
+from baseline.agentppo import OuterLoopActionAgent
 import gym
 from Environments import  Environment
 
