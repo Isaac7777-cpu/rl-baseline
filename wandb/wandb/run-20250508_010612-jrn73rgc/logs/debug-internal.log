@@ -1,0 +1,17 @@
+{"time":"2025-05-08T01:06:12.942987+10:00","level":"INFO","msg":"stream: starting","core version":"0.19.10","symlink path":"/Users/isaacleong/Codes/Personal/research/robust-ml-research/rl-baseline/wandb/wandb/run-20250508_010612-jrn73rgc/logs/debug-core.log"}
+{"time":"2025-05-08T01:06:13.816722+10:00","level":"INFO","msg":"created new stream","id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:13.816782+10:00","level":"INFO","msg":"stream: started","id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:13.816814+10:00","level":"INFO","msg":"writer: Do: started","stream_id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:13.816836+10:00","level":"INFO","msg":"handler: started","stream_id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:13.816898+10:00","level":"INFO","msg":"sender: started","stream_id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:14.011423+10:00","level":"ERROR","msg":"HTTP error","status":400,"method":"POST","url":"https://api.wandb.ai/graphql"}
+{"time":"2025-05-08T01:06:14.011734+10:00","level":"ERROR","msg":"sender: upsertRun:","error":"failed to upsert bucket: returned error 400: {\"data\":{\"upsertBucket\":null},\"errors\":[{\"message\":\"you may not log runs directly to your organization, please try using your team entity\",\"path\":[\"upsertBucket\"]}]}"}
+{"time":"2025-05-08T01:06:15.015687+10:00","level":"INFO","msg":"stream: closing","id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:15.016003+10:00","level":"ERROR","msg":"sender: upsertConfig: RunRecord is nil"}
+{"time":"2025-05-08T01:06:15.253252+10:00","level":"ERROR","msg":"HTTP error","status":404,"method":"POST","url":"https://api.wandb.ai/graphql"}
+{"time":"2025-05-08T01:06:15.253355+10:00","level":"ERROR","msg":"runfiles: CreateRunFiles returned error: returned error 404: {\"data\":{\"createRunFiles\":null},\"errors\":[{\"message\":\"project isaacleong23367-the-australian-national-university-org/Example not found during createRunFiles\",\"path\":[\"createRunFiles\"]}]}"}
+{"time":"2025-05-08T01:06:15.254985+10:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-05-08T01:06:15.255021+10:00","level":"INFO","msg":"handler: closed","stream_id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:15.255027+10:00","level":"INFO","msg":"writer: Close: closed","stream_id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:15.255033+10:00","level":"INFO","msg":"sender: closed","stream_id":"jrn73rgc"}
+{"time":"2025-05-08T01:06:15.255129+10:00","level":"INFO","msg":"stream: closed","id":"jrn73rgc"}
