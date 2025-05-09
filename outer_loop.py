@@ -142,6 +142,7 @@ for update_number in range(config.num_outer_loop_updates + 1):
 
     # Svae best model
     model_performance = validation_performance(logger)
+    print(f"{model_performance=}")
     if model_performance > best_model_performance:
         best_model_performance = model_performance
         torch.save(meta_agent.state_dict(), best_model_path)

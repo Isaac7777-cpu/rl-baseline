@@ -65,7 +65,8 @@ def run_inner_loop(arguments, training=True, run_deterministically=False):
     episode_step_num = 0
     max_episode_steps = 500
     
-    episode_return = 0
+    # episode_return = 0.
+    episode_return = torch.tensor(0.0, device=il_device)
     episodes_lengths = []
     episodes_returns = []
     episodes_success = []
@@ -157,13 +158,14 @@ def run_inner_loop(arguments, training=True, run_deterministically=False):
             next_obs, reward, done_flag, info = step_result
 
         # prepare for next step
-        reward = torch.tensor(reward, device=il_device)
+        reward = torch.tensor(reward, dtype=torch.float32, device=il_device)
         done = torch.tensor(done_flag, device=il_device)
         next_obs = torch.tensor(next_obs, device=il_device)
 
         episode_step_num += 1
-        # episodes_returns += reward
-        episodes_returns.append(reward)
+        # print(f"{reward.dtype=}")
+        # print(f"{episode_return.dtype=}")
+        episode_return += reward
         # if info['success'] == 1.0:
         #     succeeded_in_episode = True
         if info.get('success', 0.0) == 1.0:
