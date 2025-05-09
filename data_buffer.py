@@ -4,7 +4,7 @@ import numpy as np
 import torch
 # import torch.nn.utils.rnn as rnn_util
 from gym import Env
-from gym.spaces import Box
+from gym.spaces import Box, Discrete
 
 """
 This defines the buffer, refer to https://github.com/Octavio-Pappalardo/RL2-implementation-pytorch/blob/main/data_buffers.py
@@ -30,7 +30,10 @@ class LifeTimeBuffer:
        
         # Weird sizing is discussed above
         self.observations = torch.zeros((num_lifetime_steps+1, env.observation_space.shape[0])).to(device)
-        self.prev_actions = torch.zeros((num_lifetime_steps + 1, env.observation_space.shape[0])).to(device)
+        if isinstance(env.action_space, Box):
+            self.prev_actions = torch.zeros((num_lifetime_steps + 1, env.action_space.shape[0])).to(device)
+        elif isinstance(env.action_space, Discrete):
+            self.prev_actions = torch.zeros((num_lifetime_steps + 1, env.action_space.n)).to(device)
         self.prev_logprob_actions = torch.zeros((num_lifetime_steps + 1)).to(device)
         self.prev_rewards = torch.zeros((num_lifetime_steps + 1)).to(device)
         self.dones = torch.zeros((num_lifetime_steps + 1)).to(device)

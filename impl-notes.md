@@ -73,11 +73,15 @@ Therefore, this would yield the shape of:
 rnn_input_size1 = obs_size + actions_size + 1 + 1
 ```
 
+## Optimiser
+
+The choice of optimiser is switched to AdamW compared to plain Adam for hopefully better generalisability compared to the previous implementation I take reference to. Note this article for discussion about Adam and AdamW.
+    
+- https://yassin01.medium.com/adam-vs-adamw-understanding-weight-decay-and-its-impact-on-model-performance-b7414f0af8a1
+
 ## Execution Notice
 
 In order to run the training script, i.e. `outer_loop.py`, it is required to run in the root director with 
 ```bash
 python -m rl-baseline.outer_loop
 ```
-
-

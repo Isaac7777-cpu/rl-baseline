@@ -1,12 +1,15 @@
-import numpy as np
 from itertools import cycle
+from typing import Optional
+
+import numpy as np
 import torch
 import wandb
 from baseline.data_buffer import LifeTimeBuffer
 from torch.utils.data import BatchSampler, SubsetRandomSampler
 
+
 class Logger:
-    def __init__(self, num_episodes_of_validation=2):
+    def __init__(self, num_episodes_of_validation=2, wandb_logging = True):
         """
         Args:
             - num_episodes_of_validation : sets how many of the last episodes of each lifetime are used for computing the validation metrics.
@@ -21,9 +24,10 @@ class Logger:
         self.validation_episodes_return = []
         self.validaiion_episodes_success_percentage = []
         self.num_episodes_of_validation = num_episodes_of_validation
+        self.wandb_logging = wandb_logging
 
     def collect_per_lifetime_metrics(self, lifetime_buffer: LifeTimeBuffer):
-        self.lifetimes_mean_episode_return.append(np.array(lifetime_buffer).mean())
+        self.lifetimes_mean_episode_return.append(np.array(lifetime_buffer.episodes_returns).mean())
         self.lifetimes_success_percentage.append(np.sum(lifetime_buffer.episodes_sucesses) / len(lifetime_buffer.episodes_sucesses))
         self.last_episode_return.append(lifetime_buffer.episodes_returns[-1])
         self.last_episode_success_percentage.append(lifetime_buffer.episodes_sucesses[-1])
@@ -45,19 +49,23 @@ class Logger:
         for env_name in self.per_env_total_return:
             env_return = np.array(self.per_env_total_return[env_name][-10:]).mean()
             env_success = np.array(self.per_env_success_percentage[env_name][-10:]).mean()
-            wandb.log({env_name+' returns': env_return ,env_name+' success':env_success}, commit=False)
+            if self.wandb_logging:
+                wandb.log({env_name+' returns': env_return ,env_name+' success':env_success}, commit=False)
 
         last_episode_return = np.array(self.last_episode_return[-num_inner_loops_per_update: ]).mean()
         last_episode_success_percentage = np.array(self.last_episode_success_percentage[-num_inner_loops_per_update:]).mean()
-        wandb.log({'last episode return': last_episode_return, 'last episode success percentage': last_episode_success_percentage}, commit=False)
+        if self.wandb_logging:
+            wandb.log({'last episode return': last_episode_return, 'last episode success percentage': last_episode_success_percentage}, commit=False)
 
         validation_episodes_return = np.array(self.validation_episodes_return[-num_inner_loops_per_update:]).mean()
         validation_episodes_success_percentage = np.array(self.validaiion_episodes_success_percentage[-num_inner_loops_per_update:]).mean()
-        wandb.log({'validation episodes return': validation_episodes_return, 'validation episodes success percentage': validation_episodes_success_percentage}, commit=False)
+        if self.wandb_logging:
+            wandb.log({'validation episodes return': validation_episodes_return, 'validation episodes success percentage': validation_episodes_success_percentage}, commit=False)
 
         mean_episode_return = np.array(self.lifetimes_mean_episode_return[-num_inner_loops_per_update:]).mean()
         lifetime_success_percentage = np.array(self.lifetimes_success_percentage[-num_inner_loops_per_update:]).mean()
-        wandb.log({'mean episode return': mean_episode_return, 'lifetime success percentage': lifetime_success_percentage})
+        if self.wandb_logging:
+            wandb.log({'mean episode return': mean_episode_return, 'lifetime success percentage': lifetime_success_percentage})
 
 
 
@@ -103,5 +111,3 @@ class StatisticsTracker:
             self.num_lifetimes_processed[f"{lifetime_buffer.env_name}"] += 1
             self.means_sums[f"{lifetime_buffer.env_name}"] += sample_mean
             self.e_rewards_means[f"{lifetime_buffer.env_name}"] = self.means_sums[f"{lifetime_buffer.env_name}"] / self.num_lifetimes_processed[f"{lifetime_buffer.env_name}"]
-
-

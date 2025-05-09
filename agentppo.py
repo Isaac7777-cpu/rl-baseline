@@ -79,7 +79,7 @@ class MetaAgentCritic(nn.Module):
 
 class OuterLoopActionAgent(nn.Module):
     def __init__(self,
-                 actions_size,
+                 actions_size: int,
                  obs_size,
                  rnn_input_size,
                  rnn_type,
@@ -97,7 +97,7 @@ class OuterLoopActionAgent(nn.Module):
 
         self.rnn_input_size = rnn_input_size
         self.rnn_input_linear_encoder1 = nn.Sequential(
-            layer_init(nn.Linear(rnn_input_size1, rnn_input_size2)),
+            layer_init(nn.Linear(rnn_input_size1, rnn_input_size2 - 2)),
             nn.ReLU()
         )
         self.rnn_input_linear_encoder2 = nn.Sequential(
@@ -233,20 +233,21 @@ class OuterLoopActionAgent(nn.Module):
 
 
 class OuterLoopTBPTTPPO():
-    def __init__(self, optimizer: torch.optim.Optimizer, logging=False, k=100,
+    def __init__(self, optimizer: torch.optim.Optimizer, logging=False, wandb_logging=False, k=100,
                  update_epochs=2, num_minibatches=10, normalise_advantage=True,
-                 entropy_coef=0, value_coef=0.5,
+                 entropy_coef=0, valuef_coef=0.5,
                  clip_grad_norm=False, max_grad_norm=0.5, target_KL=None, clip_coef=0.2):
 
         self.optimizer = optimizer
         self.logging = logging
+        self.wandb_logging = wandb_logging
 
         self.k = k
         self.update_epochs = update_epochs
         self.num_minibatches = num_minibatches
         self.normalise_advantage = normalise_advantage
         self.entropy_coef = entropy_coef
-        self.value_coef = value_coef
+        self.valuef_coef = valuef_coef
         self.clip_grad_norm = clip_grad_norm
         self.max_grad_norm = max_grad_norm
         self.target_KL = target_KL
@@ -302,13 +303,14 @@ class OuterLoopTBPTTPPO():
         # Log metrics
         if self.logging == True:
             lr = self.optimizer.param_groups[0]["lr"]
-            wandb.log({
-                'learning_rate': lr,
-                'policy gradient loss': np.array(self.policy_gradient_losses).mean(),
-                'entropy' : np.array(self.entropies).mean(),
-                'aprox KL' : np.array(self.aprox_KL).mean(),
-                'fraction of clippings': np.array(self.fractions_of_clippings).mean()
-            }, commit=False)
+            if self.wandb_logging:
+                wandb.log({
+                    'learning_rate': lr,
+                    'policy gradient loss': np.array(self.policy_gradient_losses).mean(),
+                    'entropy' : np.array(self.entropies).mean(),
+                    'aprox KL' : np.array(self.aprox_KL).mean(),
+                    'fraction of clippings': np.array(self.fractions_of_clippings).mean()
+                }, commit=False)
 
         self.update_number += 1
 
@@ -326,7 +328,9 @@ class OuterLoopTBPTTPPO():
             subsequences_at_which_to_update = np.linspace(0, num_subsequences, self.num_minibatches + 1).astype(np.int64)[1:]
 
         self.optimizer.zero_grad()
-
+        
+        # Perform the first back-propagation which is done over the first 'displacement' steps
+        # This can help warm up the RNN memory
         b_indices = indices[:displacement]
         input_subsequnce = meta_agent.get_subset_of_input_sequence(b_indices, buffer)
         batch_size = input_subsequnce.shape[1]
@@ -352,7 +356,7 @@ class OuterLoopTBPTTPPO():
             buffer=buffer,
             meta_agent=meta_agent
         )
-        loss = policy_gradient_loss - self.entropy_coef * mean_entropy + self.value_coef * value_loss
+        loss = policy_gradient_loss - self.entropy_coef * mean_entropy + self.valuef_coef * value_loss
         loss.backward()
 
         current_subsequence_number += 1
@@ -362,10 +366,40 @@ class OuterLoopTBPTTPPO():
             self.optimizer.step()
             self.optimizer.zero_grad()
 
-        # Svae metrics for logging
+        # Save metrics for logging
         self.value_losses.append(value_loss.item())
         self.policy_gradient_losses.append(policy_gradient_loss.item())
-        self.entropies.append(mean_entropy)
+        self.entropies.append(mean_entropy.item())
+
+        ###---Perform the backpropagations over the rest of the sequence, each subsequence considered takes into account k steps---- ###
+        indices=indices[displacement:] #start from a different time step according to the 'displacement' argument
+        for b_indices in np.array_split(indices,indices_or_sections=num_subsequences-1) :
+
+            input_subsequence=meta_agent.get_subset_of_input_sequence( b_indices, buffer) 
+            if isinstance(last_hidden, tuple):
+                last_hidden = tuple(hs.detach() for hs in last_hidden)
+            else:
+                last_hidden= last_hidden.detach()
+            rnn_hidden_states , last_hidden= meta_agent.rnn(input_subsequence, last_hidden) 
+
+            #compute loss for the subsequence
+            mean_entropy , policy_gradient_loss = self._entropy_and_policy_grad_loss(indices=b_indices , hidden_states=rnn_hidden_states ,buffer=buffer,meta_agent=meta_agent)
+            value_loss = self._value_loss(indices=b_indices , hidden_states=rnn_hidden_states ,buffer=buffer,meta_agent=meta_agent)
+            loss = policy_gradient_loss - self.entropy_coef * mean_entropy + value_loss * self.valuef_coef
+            loss.backward()
+
+            current_subsequence_number+=1
+            if current_subsequence_number in subsequences_at_which_to_update:
+                if self.clip_grad_norm: 
+                    nn.utils.clip_grad_norm_(meta_agent.parameters(), self.max_grad_norm)
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+
+            #Save metrics for logging
+            self.value_losses.append(value_loss.item())
+            self.policy_gradient_losses.append(policy_gradient_loss.item())
+            self.entropies.append(mean_entropy.item())
 
             
     def _entropy_and_policy_grad_loss(

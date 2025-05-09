@@ -1,38 +1,32 @@
 import random
+from typing import Literal, Union
+
+import gym
 import numpy as np
 import torch
-from baseline.data_buffer import LifeTimeBuffer
 from baseline.agentppo import OuterLoopActionAgent
-import gym
-from Environments import  Environment
+from baseline.config import TrainingConfig
+from baseline.data_buffer import LifeTimeBuffer
+from Environments import Environment
+from gym.core import Env
+from gym.spaces import Box, Discrete
+
 
 def run_inner_loop(arguments, training=True, run_deterministically=False):
-    config = arguments[0]
+    assert isinstance(arguments[0], TrainingConfig) 
+
+    config: TrainingConfig = arguments[0]
     model_path = arguments[1]
-    benchmark_name = arguments[2]
-    task = arguments[3]
+    env_name = config.env_name
 
     # SETUP
-    def create_env(task: dict):
-        # 1) Make the Gym env
-        env_wrapper = Environment(task['env_name'])
+    def create_env(env_name: Literal['cartpole', 'mountaincar', 'crossroad']):
+        env_wrapper = Environment(env_name)
         env = env_wrapper.normal_env
+        
+        if isinstance(env.action_space, Box):
+            env = gym.wrappers.ClipAction(env)
 
-        # 2) Inject any task parameters you sampled
-        #    e.g. CartPole: length, gravity, masscart, masspole, force_mag
-        #         MountainCar: goal_position, force, gravity
-        for param, val in task.items():
-            if param == 'env_name':
-                continue
-            # gym_novel wrappers will pick these up as kwargs ; 
-            # for classic gym you must set on .unwrapped
-            if hasattr(env.unwrapped, param):
-                setattr(env.unwrapped, param, val)
-            # if your custom CartPoleEnvNovel or MountainCarEnvNovel
-            # expect them as kwargs to gym.make, you’d pass them there instead
-
-        # 3) Clip actions / seeds just like before
-        env = gym.wrappers.ClipAction(env)
         if config.seeding:
             env.seed(config.seed)
             env.action_space.seed(config.seed)
@@ -40,8 +34,8 @@ def run_inner_loop(arguments, training=True, run_deterministically=False):
 
         return env
 
-    env = create_env(task)
-    action_size = (env.action_space.n if isinstance(env.action_space, gym.spaces.Discrete) else env.action_space.shape[0])
+    env = create_env(env_name)
+    action_size = env.action_space.n if isinstance(env.action_space, gym.spaces.Discrete) else env.action_space.shape[0]
     obs_size = env.observation_space.shape[0]
 
     meta_agent = OuterLoopActionAgent(
@@ -65,7 +59,7 @@ def run_inner_loop(arguments, training=True, run_deterministically=False):
         il_device = config.il_device
 
     meta_agent = meta_agent.to(il_device)
-    lifetime_buffer = LifeTimeBuffer(config.num_il_lifetime_steps, env, il_device, env_name=f'{task.env_name}')
+    lifetime_buffer = LifeTimeBuffer(config.num_il_lifetime_steps, env, il_device, env_name=f'{env_name}')
 
     # Inner Loop
     episode_step_num = 0
@@ -79,7 +73,10 @@ def run_inner_loop(arguments, training=True, run_deterministically=False):
 
     next_obs = torch.tensor(env.reset()[0], dtype=torch.float32).to(il_device)
     done = torch.zeros(1).to(il_device)
-    action = torch.from_numpy(np.zeros(env.action_space.shape[0]))
+    if isinstance(env.action_space, gym.spaces.Discrete):
+        action = torch.zeros(env.action_space.n)
+    elif isinstance(env.action_space, gym.spaces.Box):
+        action = torch.zeros(env.action_space.shape[0])
     logprob = torch.zeros(1)
     reward = torch.zeros(1)
     hidden_state = meta_agent.initialise_state(batch_size=1)
@@ -129,30 +126,50 @@ def run_inner_loop(arguments, training=True, run_deterministically=False):
                 action, logprob, _ = meta_agent.get_action(hidden_state)
                 action = action.squeeze(0).squeeze(0)
                 logprob = logprob.squeeze(0).squeeze(0)
-        # elif run_deterministically == True:   # Changed to else for better lsp
         else:
             with torch.no_grad():
                 meta_value = torch.ones(1)
                 action = meta_agent.get_deterministic_action(hidden_state)
                 action = action.squeeze(0).squeeze(0)
                 logprob = torch.zeros(1)
+        
+        if isinstance(env.action_space, Discrete):
+            action_to_take = int(torch.argmax(action).item()) if action.ndim > 0 else int(action.item())
+        else:
+            action_to_take = action.cpu().numpy()
 
         lifetime_buffer.store_meta_value(global_step=global_step, meta_value=meta_value)
         
         # Execute the action and obtain environment response
-        # TODO: Check if it we have truncated method
-        next_obs, reward, terminated, truncated, info = env.step(action.cpu().numpy())
-        done = torch.max(torch.Tensor([terminated, truncated]))
+        # next_obs, reward, terminated, info = env.step(action_to_take)
+        step_result = env.step(action_to_take)
+
+        # Original impl
+        # next_obs, reward, terminated, info = env.step(action_to_take)
+        # done = torch.max(torch.Tensor([terminated, truncated]))
+        # done = torch.tensor(done, device=il_device)
+        
+        if len(step_result) == 5: 
+             next_obs, reward, terminated, truncated, info = step_result
+             done_flag = terminated or truncated
+        else:
+            # This is specifically for gym <= 0.26 where there is only four return values.
+            next_obs, reward, done_flag, info = step_result
 
         # prepare for next step
         reward = torch.tensor(reward, device=il_device)
-        done = torch.tensor(done, device=il_device)
+        done = torch.tensor(done_flag, device=il_device)
         next_obs = torch.tensor(next_obs, device=il_device)
 
         episode_step_num += 1
-        episodes_returns += reward
-        if info['success'] == 1.0:
+        # episodes_returns += reward
+        episodes_returns.append(reward)
+        # if info['success'] == 1.0:
+        #     succeeded_in_episode = True
+        if info.get('success', 0.0) == 1.0:
             succeeded_in_episode = True
+        # elif episode_step_num >= max_episode_steps:
+        #     succeeded_in_episode = True
         
         # WHen in the last step, save the last action taken and reward received in an extra timeslot
         if global_step == config.num_il_lifetime_steps - 1:
@@ -186,4 +203,3 @@ def run_inner_loop(arguments, training=True, run_deterministically=False):
     elif training == True:
         return lifetime_buffer
     
-

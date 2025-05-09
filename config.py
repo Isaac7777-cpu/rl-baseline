@@ -45,6 +45,8 @@ class TrainingConfig:
 
         self.wandb_logging = False
 
+        self.task_count = 16
+
 
 def get_config():
     return TrainingConfig()
